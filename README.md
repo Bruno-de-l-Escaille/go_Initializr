@@ -5,7 +5,7 @@ A Go REST API boilerplate project based on the gopeople architecture, featuring 
 ## Features
 
 - **Clean Architecture**: Follows a layered architecture with models, repositories, services, and handlers
-- **JWT Authentication**: Token-based authentication middleware for protected endpoints
+- **JWT Authentication**: ES256 (ECDSA) asymmetric JWT validation using public key from gopeople auth service
 - **REST API**: Complete CRUD operations with proper HTTP status codes
 - **Database Integration**: PostgreSQL support with prepared statements and migrations
 - **UUID v7**: Time-sortable UUIDs for better database performance
@@ -69,41 +69,52 @@ go_Initializr/
    go mod tidy
    ```
 
-4. **Install development tools**
+4. **Set up environment variables**
    ```bash
-   make install-tools
-   ```
-
-5. **Set up environment variables**
-   ```bash
-   make setup
+   cp example.env .env
    ```
    Edit `.env` with your database configuration.
+
+5. **Obtain JWT Public Key**
+   
+   This service validates JWTs signed by the gopeople auth service. You need the public key:
+   
+   ```bash
+   # Copy public key from gopeople service
+   cp /path/to/gopeople/keys/public.pem keys/public.pem
+   ```
+   
+   Set the path in `.env`:
+   ```env
+   JWT_PUBLIC_KEY_PATH=./keys/public.pem
+   ```
+   
+   **Note**: This service only validates JWTs. It does NOT generate or sign tokens. See `README_JWT.md` and `JWT_ARCHITECTURE.md` for details.
 
 6. **Create the database**
    Create a PostgreSQL database named `go_Initializr` (or whatever you set in DB_NAME).
 
 7. **Run database migrations**
    ```bash
-   make migrate-up
+   go run migrations/migrate.go
    ```
 
 ### Running the Application
 
 **Development (with live reload using Air):**
 ```bash
-make dev
+air
 ```
 
 **Production:**
 ```bash
-make run
+go run main.go
 ```
 
 **Build binary:**
 ```bash
-make build
-./bin/go_Initializr
+go build -o go_initializr
+./go_initializr
 ```
 
 The server will start on `http://localhost:8080` by default.
@@ -125,7 +136,14 @@ The server will start on `http://localhost:8080` by default.
 
 ### JWT Authentication
 
-The API uses JWT (JSON Web Token) for authentication on protected endpoints. Tokens should be included in the Authorization header as a Bearer token.
+The API uses **ES256 (ECDSA with P-256)** for JWT validation. This is an asymmetric cryptography approach where:
+
+- **gopeople service** signs JWTs using a private key
+- **go_Initializr service** validates JWTs using a public key (this service)
+- Tokens are included in the `Authorization` header as a Bearer token
+
+**Algorithm**: ES256 (ECDSA with SHA-256 on P-256 curve)  
+**Validation**: Public key cryptography (no shared secrets)
 
 **Protected Endpoints** (require JWT):
 - `POST /api/example-entities` - Create entity
@@ -137,14 +155,33 @@ The API uses JWT (JSON Web Token) for authentication on protected endpoints. Tok
 - `GET /api/public/example-entities/{uuid}` - Get entity by UUID
 - `GET /health` - Health check
 
-**JWT Token Format:**
+**JWT Header (ES256):**
+```json
+{
+  "alg": "ES256",
+  "typ": "JWT"
+}
+```
+
+**JWT Claims:**
 ```json
 {
   "user_uuid": "user-uuid-here",
+  "user_id": "user-id",
+  "email": "user@example.com",
   "exp": 1640995200,
-  "iat": 1640908800
+  "iat": 1640908800,
+  "iss": "gopeople"
 }
 ```
+
+**How to get a JWT:**
+1. Authenticate with the gopeople service (POST `/api/v1/auth/login`)
+2. Use the returned JWT token in requests to go_Initializr
+
+For more details on JWT validation architecture, see:
+- `README_JWT.md` - JWT implementation details
+- `JWT_ARCHITECTURE.md` - Service architecture and roles
 
 ### Example Usage
 
@@ -158,11 +195,18 @@ curl http://localhost:8080/api/public/example-entities
 curl http://localhost:8080/api/public/example-entities/{uuid}
 ```
 
-**Create an entity (requires JWT):**
+**Create an entity (requires JWT from gopeople):**
 ```bash
+# First, get JWT from gopeople auth service
+TOKEN=$(curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password"}' \
+  | jq -r '.access_token')
+
+# Then use the JWT in go_Initializr
 curl -X POST http://localhost:8080/api/example-entities \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "name": "John Doe",
     "description": "A sample entity",
@@ -175,7 +219,7 @@ curl -X POST http://localhost:8080/api/example-entities \
 ```bash
 curl -X PUT http://localhost:8080/api/example-entities/{uuid} \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "name": "Updated Name"
   }'
@@ -184,25 +228,20 @@ curl -X PUT http://localhost:8080/api/example-entities/{uuid} \
 **Delete entity (requires JWT):**
 ```bash
 curl -X DELETE http://localhost:8080/api/example-entities/{uuid} \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Database Migrations
 
-**Create a new migration:**
-```bash
-make migrate-create name=add_new_table
-```
-
 **Apply migrations:**
 ```bash
-make migrate-up
+go run migrations/migrate.go
 ```
 
-**Rollback migrations:**
-```bash
-make migrate-down
-```
+**Create a new migration manually:**
+Create two files in `migrations/`:
+- `000002_migration_name.up.sql` - Forward migration
+- `000002_migration_name.down.sql` - Rollback migration
 
 ### UUID v7
 
@@ -223,10 +262,15 @@ timestamp, err := db.ExtractTimestampFromUUIDv7(id)
 
 Generate documentation:
 ```bash
-make swagger
+swag init
 ```
 
 Access documentation at: `http://localhost:8080/swagger/index.html`
+
+**Install swag if not already installed:**
+```bash
+go install github.com/swaggo/swag/cmd/swag@latest
+```
 
 ## Architecture Overview
 
@@ -268,8 +312,7 @@ Access documentation at: `http://localhost:8080/swagger/index.html`
 | `PORT` | Server port | `8080` |
 | `GIN_MODE` | Gin mode (debug/release) | `debug` |
 | `LOG_LEVEL` | Log level (debug/info/warn/error) | `info` |
-| `JWT_SECRET` | Secret key for JWT validation | `your-secret-key` |
-| `JWT_EXPIRY_HOURS` | JWT token expiry in hours | `24` |
+| `JWT_PUBLIC_KEY_PATH` | Path to ECDSA public key for JWT validation | `./keys/public.pem` |
 
 ## Development
 
@@ -304,7 +347,3 @@ The application uses structured logging with zerolog:
 2. Add proper error handling and logging
 3. Write tests for new functionality
 4. Update documentation as needed
-
-## License
-
-This project is licensed under the MIT License.

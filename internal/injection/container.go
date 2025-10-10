@@ -1,6 +1,7 @@
 package injection
 
 import (
+	"crypto/ecdsa"
 	"database/sql"
 	"go_Initializr/handler"
 )
@@ -49,4 +50,9 @@ func (c *Container) GetDB() *sql.DB {
 // GetExampleEntityComponents returns ExampleEntity components
 func (c *Container) GetExampleEntityComponents() *exampleEntityComponents {
 	return c.exampleEntityComponents
+}
+
+// GetPublicKey returns the ECDSA public key for JWT validation (ES256)
+func (c *Container) GetPublicKey() *ecdsa.PublicKey {
+	return c.core.GetPublicKey()
 }

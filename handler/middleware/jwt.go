@@ -1,7 +1,8 @@
 package middleware
 
 import (
-	"go_Initializr/models"
+	"crypto/ecdsa"
+	jwtutil "go_Initializr/pkg/jwt"
 	"net/http"
 	"strings"
 
@@ -10,8 +11,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// JWTAuth returns a middleware that validates JWT tokens
-func JWTAuth(secretKey string) gin.HandlerFunc {
+// JWTAuth returns a middleware that validates JWT tokens using ECDSA public key (ES256)
+// This is for external service validation - tokens are signed by gopeople with private key
+func JWTAuth(publicKey *ecdsa.PublicKey) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get the Authorization header
 		authHeader := c.GetHeader("Authorization")
@@ -36,39 +38,40 @@ func JWTAuth(secretKey string) gin.HandlerFunc {
 			return
 		}
 
-		// Parse and validate the token
-		token, err := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			// Validate the signing method
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return []byte(secretKey), nil
-		})
-
+		// Validate the token using ECDSA public key (ES256)
+		token, err := jwtutil.ValidateTokenWithPublicKey(tokenString, publicKey)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to parse JWT token")
+			log.Error().Err(err).Msg("Failed to validate JWT token with ECDSA public key (ES256)")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
 		}
 
-		// Check if token is valid
-		if !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token is not valid"})
-			c.Abort()
-			return
-		}
-
 		// Extract claims
-		claims, ok := token.Claims.(*models.JWTClaims)
+		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			c.Abort()
 			return
 		}
 
+		// Extract user_id or user_uuid from claims
+		var userUUID string
+		if uuid, ok := claims["user_uuid"].(string); ok {
+			userUUID = uuid
+		} else if userID, ok := claims["user_id"].(string); ok {
+			userUUID = userID
+		}
+
+		if userUUID == "" {
+			log.Error().Msg("No user_uuid or user_id found in token claims")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims: missing user identifier"})
+			c.Abort()
+			return
+		}
+
 		// Set user UUID in context for use in handlers
-		c.Set("user_uuid", claims.UserUUID)
+		c.Set("user_uuid", userUUID)
 		c.Set("jwt_claims", claims)
 
 		// Continue to the next middleware/handler
@@ -76,8 +79,8 @@ func JWTAuth(secretKey string) gin.HandlerFunc {
 	}
 }
 
-// OptionalJWTAuth returns a middleware that validates JWT tokens but doesn't require them
-func OptionalJWTAuth(secretKey string) gin.HandlerFunc {
+// OptionalJWTAuth returns a middleware that validates JWT tokens but doesn't require them using ECDSA public key (ES256)
+func OptionalJWTAuth(publicKey *ecdsa.PublicKey) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get the Authorization header
 		authHeader := c.GetHeader("Authorization")
@@ -102,40 +105,36 @@ func OptionalJWTAuth(secretKey string) gin.HandlerFunc {
 			return
 		}
 
-		// Parse and validate the token
-		token, err := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			// Validate the signing method
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return []byte(secretKey), nil
-		})
-
+		// Validate the token using ECDSA public key (ES256)
+		token, err := jwtutil.ValidateTokenWithPublicKey(tokenString, publicKey)
 		if err != nil {
-			log.Warn().Err(err).Msg("Failed to parse JWT token in optional auth")
-			// Continue without authentication
-			c.Next()
-			return
-		}
-
-		// Check if token is valid
-		if !token.Valid {
+			log.Warn().Err(err).Msg("Failed to validate JWT token with ES256 in optional auth")
 			// Continue without authentication
 			c.Next()
 			return
 		}
 
 		// Extract claims
-		claims, ok := token.Claims.(*models.JWTClaims)
+		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			// Continue without authentication
 			c.Next()
 			return
 		}
 
-		// Set user UUID in context for use in handlers
-		c.Set("user_uuid", claims.UserUUID)
-		c.Set("jwt_claims", claims)
+		// Extract user_id or user_uuid from claims
+		var userUUID string
+		if uuid, ok := claims["user_uuid"].(string); ok {
+			userUUID = uuid
+		} else if userID, ok := claims["user_id"].(string); ok {
+			userUUID = userID
+		}
+
+		if userUUID != "" {
+			// Set user UUID in context for use in handlers
+			c.Set("user_uuid", userUUID)
+			c.Set("jwt_claims", claims)
+		}
 
 		// Continue to the next middleware/handler
 		c.Next()

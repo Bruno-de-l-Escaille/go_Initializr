@@ -35,7 +35,7 @@ func SetupRoutes(router *gin.Engine, container *injection.Container) {
 
 // setupExampleEntityRoutes configures routes for ExampleEntity
 func setupExampleEntityRoutes(router *gin.Engine, container *injection.Container) {
-	config := container.GetConfig()
+	publicKey := container.GetPublicKey()
 	handler := container.GetExampleEntityHandler()
 
 	// Public API routes (no auth required)
@@ -45,9 +45,9 @@ func setupExampleEntityRoutes(router *gin.Engine, container *injection.Container
 		publicAPI.GET("/example-entities/:uuid", handler.GetEntity)
 	}
 
-	// Protected API routes (JWT auth required)
+	// Protected API routes (JWT auth required - using RSA public key validation)
 	protectedAPI := router.Group("/api")
-	protectedAPI.Use(middleware.JWTAuth(config.JWTSecret))
+	protectedAPI.Use(middleware.JWTAuth(publicKey))
 	{
 		exampleEntities := protectedAPI.Group("/example-entities")
 		{

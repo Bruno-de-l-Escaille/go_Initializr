@@ -15,9 +15,3 @@ type ExampleEntityServiceInterface interface {
 	GetAllEntities(ctx context.Context, filter string, offset, limit int) ([]*models.ExampleEntity, int64, error)
 }
 
-// EventServiceInterface defines the service interface for events
-type EventServiceInterface interface {
-	CreateEvent(ctx context.Context, event *models.Event) error
-	GetEventsByEntityUUID(ctx context.Context, entityUUID string) ([]*models.Event, error)
-}
-

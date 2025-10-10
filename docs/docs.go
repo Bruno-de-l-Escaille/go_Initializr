@@ -9,15 +9,9 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
-            "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
-        },
-        "license": {
-            "name": "MIT",
-            "url": "https://opensource.org/licenses/MIT"
+            "email": "support@example.com"
         },
         "version": "{{.Version}}"
     },
@@ -364,10 +358,6 @@ const docTemplate = `{
         "models.ExampleEntity": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "type": "string",
-                    "example": "2025-05-08T16:36:52.317+01:00"
-                },
                 "description": {
                     "type": "string",
                     "example": "This is an example description"
@@ -439,7 +429,7 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "description": "Provide a Bearer token in the format: Bearer \u003ctoken\u003e",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
@@ -454,7 +444,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Go Initializr API",
-	Description:      "This is a sample Go Initializr API server with JWT authentication.",
+	Description:      "This is the Go Initializr API service to manage entities.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

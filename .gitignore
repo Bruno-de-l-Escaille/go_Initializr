@@ -48,11 +48,15 @@ Thumbs.db
 # Logs
 *.log
 logs/
+var/
 
 # Database files
 *.db
 *.sqlite
 
+# JWT Keys (public key can be committed, but keep actual keys out by default)
+keys/*.pem
+!keys/*.pem.example
 
 # Temporary files
 tmp/

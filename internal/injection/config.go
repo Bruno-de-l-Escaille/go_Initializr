@@ -2,7 +2,6 @@ package injection
 
 import (
 	"os"
-	"strconv"
 )
 
 // AppConfig holds application configuration values derived from environment variables.
@@ -19,9 +18,8 @@ type AppConfig struct {
 	Port    string
 	GinMode string
 
-	// JWT configuration
-	JWTSecret      string
-	JWTExpiryHours int
+	// JWT configuration (validation only - external service)
+	JWTPublicKeyPath string
 
 	// Logging configuration
 	LogLevel string
@@ -32,12 +30,6 @@ type AppConfig struct {
 
 // loadConfig loads configuration from environment variables.
 func loadConfig() (*AppConfig, error) {
-	jwtExpiryHoursStr := os.Getenv("JWT_EXPIRY_HOURS")
-	jwtExpiryHours, err := strconv.Atoi(jwtExpiryHoursStr)
-	if err != nil {
-		jwtExpiryHours = 24 // Default to 24 hours
-	}
-
 	return &AppConfig{
 		// Database configuration
 		DBHost:     getEnvOrDefault("DB_HOST", "localhost"),
@@ -51,9 +43,8 @@ func loadConfig() (*AppConfig, error) {
 		Port:    getEnvOrDefault("PORT", "8080"),
 		GinMode: getEnvOrDefault("GIN_MODE", "debug"),
 
-		// JWT configuration
-		JWTSecret:      getEnvOrDefault("JWT_SECRET", "your-secret-key"),
-		JWTExpiryHours: jwtExpiryHours,
+		// JWT configuration (validation only - external service)
+		JWTPublicKeyPath: getEnvOrDefault("JWT_PUBLIC_KEY_PATH", "./keys/public.pem"),
 
 		// Logging configuration
 		LogLevel: getEnvOrDefault("LOG_LEVEL", "info"),

@@ -16,9 +16,6 @@ definitions:
     type: object
   models.ExampleEntity:
     properties:
-      created_at:
-        example: "2025-05-08T16:36:52.317+01:00"
-        type: string
       description:
         example: This is an example description
         type: string
@@ -71,14 +68,9 @@ definitions:
 host: localhost:8080
 info:
   contact:
-    email: support@swagger.io
+    email: support@example.com
     name: API Support
-    url: http://www.swagger.io/support
-  description: This is a sample Go Initializr API server with JWT authentication.
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-  termsOfService: http://swagger.io/terms/
+  description: This is the Go Initializr API service to manage entities.
   title: Go Initializr API
   version: "1.0"
 paths:
@@ -292,7 +284,7 @@ paths:
       - example-entities
 securityDefinitions:
   BearerAuth:
-    description: Type "Bearer" followed by a space and JWT token.
+    description: 'Provide a Bearer token in the format: Bearer <token>'
     in: header
     name: Authorization
     type: apiKey

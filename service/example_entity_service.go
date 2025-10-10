@@ -11,6 +11,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Compile-time check to ensure ExampleEntityService implements ExampleEntityServiceInterface
+var _ ExampleEntityServiceInterface = (*ExampleEntityService)(nil)
+
 // ExampleEntityService implements ExampleEntityServiceInterface
 type ExampleEntityService struct {
 	repo repository.ExampleEntityRepositoryInterface

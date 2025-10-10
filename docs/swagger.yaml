@@ -1,0 +1,299 @@
+basePath: /
+definitions:
+  handler.ResponseError:
+    properties:
+      error:
+        type: string
+    type: object
+  handler.ResponseWithCount:
+    properties:
+      count:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/models.ExampleEntity'
+        type: array
+    type: object
+  models.ExampleEntity:
+    properties:
+      created_at:
+        example: "2025-05-08T16:36:52.317+01:00"
+        type: string
+      description:
+        example: This is an example description
+        type: string
+      email:
+        example: example@example.com
+        type: string
+      name:
+        example: Example Name
+        type: string
+      status:
+        example: active
+        type: string
+      updated_at:
+        example: "2025-05-08T16:36:52.317+01:00"
+        type: string
+    type: object
+  models.ExampleEntityCreateRequest:
+    properties:
+      description:
+        example: This is an example description
+        type: string
+      email:
+        example: example@example.com
+        type: string
+      name:
+        example: Example Name
+        type: string
+      status:
+        example: active
+        type: string
+    required:
+    - email
+    - name
+    type: object
+  models.ExampleEntityUpdateRequest:
+    properties:
+      description:
+        example: Updated description
+        type: string
+      email:
+        example: updated@example.com
+        type: string
+      name:
+        example: Updated Example Name
+        type: string
+      status:
+        example: inactive
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is a sample Go Initializr API server with JWT authentication.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Go Initializr API
+  version: "1.0"
+paths:
+  /api/example-entities:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new ExampleEntity with the provided data. Requires JWT
+        authentication.
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ExampleEntity data
+        in: body
+        name: entity
+        required: true
+        schema:
+          $ref: '#/definitions/models.ExampleEntityCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ExampleEntity'
+        "400":
+          description: Bad Request - Invalid input data
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "401":
+          description: Unauthorized - Valid JWT token required
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "409":
+          description: Conflict - Entity already exists
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: Create a new ExampleEntity
+      tags:
+      - example-entities
+  /api/example-entities/{uuid}:
+    delete:
+      description: Deletes an ExampleEntity by its UUID. Requires JWT authentication.
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ExampleEntity UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content - Entity deleted successfully
+        "400":
+          description: Bad Request - Invalid UUID
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "401":
+          description: Unauthorized - Valid JWT token required
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "404":
+          description: Not Found - Entity not found
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: Delete an ExampleEntity
+      tags:
+      - example-entities
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing ExampleEntity with the provided data. Requires
+        JWT authentication.
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ExampleEntity UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Updated ExampleEntity data
+        in: body
+        name: entity
+        required: true
+        schema:
+          $ref: '#/definitions/models.ExampleEntityUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ExampleEntity'
+        "400":
+          description: Bad Request - Invalid input data
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "401":
+          description: Unauthorized - Valid JWT token required
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "404":
+          description: Not Found - Entity not found
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "409":
+          description: Conflict - Email already in use
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+      security:
+      - BearerAuth: []
+      summary: Update an ExampleEntity
+      tags:
+      - example-entities
+  /api/public/example-entities:
+    get:
+      description: Retrieves a list of all ExampleEntities with optional filtering
+        and pagination. Public endpoint, no authentication required.
+      parameters:
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: 'Limit for pagination (default: 50, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: Filter string for searching entities
+        in: query
+        name: filter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ResponseWithCount'
+        "400":
+          description: Bad Request - Invalid query parameters
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+      summary: Get all ExampleEntities
+      tags:
+      - example-entities
+  /api/public/example-entities/{uuid}:
+    get:
+      description: Retrieves an ExampleEntity by its UUID. Public endpoint, no authentication
+        required.
+      parameters:
+      - description: ExampleEntity UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ExampleEntity'
+        "400":
+          description: Bad Request - Invalid UUID
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "404":
+          description: Not Found - Entity not found
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ResponseError'
+      summary: Get an ExampleEntity by UUID
+      tags:
+      - example-entities
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

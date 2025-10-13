@@ -176,7 +176,7 @@ The API uses **ES256 (ECDSA with P-256)** for JWT validation. This is an asymmet
 ```
 
 **How to get a JWT:**
-1. Authenticate with the gopeople service (POST `/api/v1/auth/login`)
+1. Authenticate with the gopeople service (POST `/auth/login`)
 2. Use the returned JWT token in requests to go_Initializr
 
 For more details on JWT validation architecture, see:
@@ -198,10 +198,10 @@ curl http://localhost:8080/api/public/example-entities/{uuid}
 **Create an entity (requires JWT from gopeople):**
 ```bash
 # First, get JWT from gopeople auth service
-TOKEN=$(curl -X POST http://localhost:8080/api/v1/auth/login \
+TOKEN=$(curl -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password"}' \
-  | jq -r '.access_token')
+  | jq -r '.token')
 
 # Then use the JWT in go_Initializr
 curl -X POST http://localhost:8080/api/example-entities \
@@ -337,7 +337,7 @@ The project structure supports easy testing:
 ### Logging
 
 The application uses structured logging with zerolog:
-- Logs are output in JSON format in production
+- Logs are output in JSON format 
 - Console-friendly format in development
 - Request logging middleware tracks all HTTP requests
 

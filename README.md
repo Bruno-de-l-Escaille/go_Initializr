@@ -28,4 +28,4 @@ This branch provides a starter project based on an event-sourcing and CQRS archi
 *   **UUID v7:** Implements UUID v7.
 *   **GoPeople-based Authentication:** Integrates JWT validation using a public key.
 *   **Swagger Documentation:** Includes Swagger for API documentation.
-*   **Structured Logging:** Uses `zerolog` for structured logging.
+*   **Structured Logging:** Uses `zerolog` for structured logging.  

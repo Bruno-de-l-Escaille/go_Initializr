@@ -1,14 +1,24 @@
 package handler
 
 import (
+	"context"
 	"go_Initializr/models"
 	"go_Initializr/service"
+	"go_Initializr/service/utils"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
+
+// createContextWithUser creates a context with user UUID from Gin context
+func createContextWithUser(c *gin.Context) context.Context {
+	if userUUID, exists := c.Get("user_uuid"); exists {
+		return utils.CreateContextWithUserUUID(c.Request.Context(), userUUID.(string))
+	}
+	return c.Request.Context()
+}
 
 // ResponseWithCount is a custom response structure to include count and data
 type ResponseWithCount struct {
@@ -23,14 +33,7 @@ type ResponseError struct {
 
 // ExampleEntityHandler handles HTTP requests for ExampleEntity
 type ExampleEntityHandler struct {
-	Service service.ExampleEntityServiceInterface
-}
-
-// NewExampleEntityHandler creates a new ExampleEntity handler
-func NewExampleEntityHandler(service service.ExampleEntityServiceInterface) *ExampleEntityHandler {
-	return &ExampleEntityHandler{
-		Service: service,
-	}
+	ExampleEntityService service.ExampleEntityServiceInterface
 }
 
 // CreateEntity handles the creation of a new ExampleEntity
@@ -63,7 +66,15 @@ func (h *ExampleEntityHandler) CreateEntity(c *gin.Context) {
 		return
 	}
 
-	entity, err := h.Service.CreateEntity(c.Request.Context(), &req)
+	// Create a context with the user UUID for the service layer
+	ctx := createContextWithUser(c)
+	
+	entity, err := h.ExampleEntityService.CreateEntity(ctx, models.ExampleEntity{
+		Name:        req.Name,
+		Description: req.Description,
+		Email:       req.Email,
+		Status:      req.Status,
+	})
 	if err != nil {
 		log.Error().Err(err).Str("user_uuid", userUUID.(string)).Msg("Failed to create ExampleEntity")
 		if err.Error() == "entity with email already exists" {
@@ -97,7 +108,7 @@ func (h *ExampleEntityHandler) GetEntity(c *gin.Context) {
 		return
 	}
 
-	entity, err := h.Service.GetEntityByUUID(c.Request.Context(), uuid)
+	entity, err := h.ExampleEntityService.GetEntityByRef(c.Request.Context(), uuid)
 	if err != nil {
 		log.Error().Err(err).Str("uuid", uuid).Msg("Failed to get ExampleEntity")
 		c.JSON(http.StatusNotFound, ResponseError{Error: "Entity not found"})
@@ -145,7 +156,23 @@ func (h *ExampleEntityHandler) UpdateEntity(c *gin.Context) {
 		return
 	}
 
-	entity, err := h.Service.UpdateEntity(c.Request.Context(), uuid, &req)
+	// Create a context with the user UUID for the service layer
+	ctx := createContextWithUser(c)
+
+	entityData := make(map[string]interface{})
+	if req.Name != nil {
+		entityData["name"] = *req.Name
+	}
+	if req.Description != nil {
+		entityData["description"] = *req.Description
+	}
+	if req.Email != nil {
+		entityData["email"] = *req.Email
+	}
+	if req.Status != nil {
+		entityData["status"] = *req.Status
+	}
+	entity, err := h.ExampleEntityService.UpdateEntityByRef(ctx, uuid, entityData)
 	if err != nil {
 		log.Error().Err(err).Str("user_uuid", userUUID.(string)).Str("entity_uuid", uuid).Msg("Failed to update ExampleEntity")
 		if err.Error() == "entity not found" {
@@ -192,7 +219,10 @@ func (h *ExampleEntityHandler) DeleteEntity(c *gin.Context) {
 		return
 	}
 
-	err := h.Service.DeleteEntity(c.Request.Context(), uuid)
+	// Create a context with the user UUID for the service layer
+	ctx := createContextWithUser(c)
+	
+	err := h.ExampleEntityService.DeleteEntityByRef(ctx, uuid)
 	if err != nil {
 		log.Error().Err(err).Str("user_uuid", userUUID.(string)).Str("entity_uuid", uuid).Msg("Failed to delete ExampleEntity")
 		if err.Error() == "entity not found" {
@@ -237,16 +267,22 @@ func (h *ExampleEntityHandler) GetAllEntities(c *gin.Context) {
 		return
 	}
 
-	entities, totalCount, err := h.Service.GetAllEntities(c.Request.Context(), filter, offset, limit)
+	entities, _, totalCount, err := h.ExampleEntityService.GetAllEntities(c.Request.Context(), filter, offset, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get all ExampleEntities")
 		c.JSON(http.StatusInternalServerError, ResponseError{Error: "Failed to get entities"})
 		return
 	}
 
+	// Convert []models.ExampleEntity to []*models.ExampleEntity
+	entityPointers := make([]*models.ExampleEntity, len(entities))
+	for i := range entities {
+		entityPointers[i] = &entities[i]
+	}
+
 	response := ResponseWithCount{
 		Count: int(totalCount),
-		Data:  entities,
+		Data:  entityPointers,
 	}
 
 	c.JSON(http.StatusOK, response)

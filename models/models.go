@@ -20,12 +20,15 @@ type ResponseError struct {
 
 // Event represents an event in the system
 type Event struct {
-	UUID          string          `json:"uuid" example:"2zi4x7qG8dyx1q3q649iu"`                    // UUID if Event (UUID), if empty a new one will be generated
-	Operation     string          `json:"operation" enums:"create,update,delete" example:"update"` // operation  ("create", "update",
-	Payload       json.RawMessage `json:"-" `
-	UUIDTimeStamp time.Time       `json:"timestamp,omitempty" example:"2025-05-08T16:36:52.317+01:00"` // Timestamp extracted from UUID
+	UUID          string          `json:"uuid" example:"2zi4x7qG8dyx1q3q649iu"`                        // UUID if Event (UUID), if empty a new one will be generated
 	EntityUUID    string          `json:"entity_uuid" example:"2zi4x7qG8dyx1q3q649iu"`                 // UUID of the entity this event relates to
+	EntityType    string          `json:"entity_type" example:"example_entity"`                        // Type of the entity
+	Operation     string          `json:"operation" enums:"create,update,delete" example:"update"`     // operation  ("create", "update", "delete")
+	Payload       json.RawMessage `json:"-"`                                                           // Event payload (stored as JSON)
+	Ref           string          `json:"ref" example:"example-ref"`                                   // Reference identifier
 	ActorUUID     string          `json:"actor_uuid" example:"2zi4x7qG8dyx1q3q649iu"`                  // UUID of the actor who triggered this event
+	CreatedAt     time.Time       `json:"created_at" example:"2025-05-08T16:36:52.317+01:00"`          // Event creation timestamp
+	UUIDTimeStamp time.Time       `json:"timestamp,omitempty" example:"2025-05-08T16:36:52.317+01:00"` // Timestamp extracted from UUID
 }
 
 // ExampleEntity represents an example entity in the system

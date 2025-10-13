@@ -5,10 +5,16 @@ import (
 	"fmt"
 	"os"
 
+	"go_Initializr/pkg/nosql"
+
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
+	"time"
+	"go_Initializr/models/apperrors"
 )
+
+var MongoClient *nosql.MongoDB
 
 // LoadEnvVariables loads environment variables from .env file
 func LoadEnvVariables() error {
@@ -58,6 +64,39 @@ func InitDatabase() (*sql.DB, error) {
 		Msg("Database connection established")
 
 	return db, nil
+}
+
+// InitMongoDB initializes the MongoDB connection
+func ConnectionToMongoDB() error {
+	mongoHost := os.Getenv("MONGO_HOST")
+	mongoPort := os.Getenv("MONGO_PORT")
+	mongoUsername := os.Getenv("MONGO_USERNAME")
+	mongoPassword := os.Getenv("MONGO_PASSWORD")
+	mongoDatabase := os.Getenv("MONGO_DB")
+
+	// Build MongoDB URI with optional authentication
+	var mongoURI string
+	if mongoUsername != "" && mongoPassword != "" {
+		mongoURI = fmt.Sprintf("mongodb://%s:%s@%s:%s", mongoUsername, mongoPassword, mongoHost, mongoPort)
+	} else {
+		mongoURI = fmt.Sprintf("mongodb://%s:%s", mongoHost, mongoPort)
+	}
+
+	mongoConfig := nosql.MongoDBConfig{
+		URI:      mongoURI,
+		Database: mongoDatabase,
+		Username: mongoUsername,
+		Password: mongoPassword,
+		Timeout:  10 * time.Second,
+	}
+
+	client, err := nosql.NewMongoDB(mongoConfig)
+	if err != nil {
+		return apperrors.NewServiceUnavailable()
+	}
+
+	MongoClient = client
+	return nil
 }
 
 // getEnvOrDefault returns environment variable value or default if not set

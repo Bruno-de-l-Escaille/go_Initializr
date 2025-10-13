@@ -2,46 +2,48 @@ package injection
 
 import (
 	"go_Initializr/handler"
+	"go_Initializr/models"
 	"go_Initializr/repository"
+	"go_Initializr/repository/example_Entity"
+	"go_Initializr/service/base"
+	example_EntityService "go_Initializr/service/example_Entity"
 	"go_Initializr/service"
 )
 
 // exampleEntityComponents holds ExampleEntity-related components
 type exampleEntityComponents struct {
-	repository repository.ExampleEntityRepositoryInterface
-	service    service.ExampleEntityServiceInterface
-	handler    *handler.ExampleEntityHandler
+	repository               repository.ExampleEntityRepositoryInterface
+	service                  service.ExampleEntityServiceInterface
+	exampleEntityBaseService  *base.BaseService[models.ExampleEntity]
+	handler                  *handler.ExampleEntityHandler
 }
 
 // initializeExampleEntityComponents initializes ExampleEntity components
 func initializeExampleEntityComponents(core *coreComponents) *exampleEntityComponents {
 	// Initialize repository
-	repo := repository.NewExampleEntityRepository(core.db)
+	exampleEntityRepository := &example_Entity.ExampleEntityRepository{
+		BaseRepository: *core.baseRepository,
+	}
+
+	exampleEntityBaseService := base.NewBaseService[models.ExampleEntity](
+		core.baseRepository,
+		core.eventService,
+		"example_entity",
+	)
+	
 
 	// Initialize service
-	svc := service.NewExampleEntityService(repo)
+	exampleEntityService := example_EntityService.NewExampleEntityService(exampleEntityRepository, core.eventService)
 
 	// Initialize handler
-	hdlr := handler.NewExampleEntityHandler(svc)
+	example_EntityHandler := &handler.ExampleEntityHandler{
+		ExampleEntityService: exampleEntityService,
+	}
 
 	return &exampleEntityComponents{
-		repository: repo,
-		service:    svc,
-		handler:    hdlr,
+		repository: exampleEntityRepository,
+		service:    exampleEntityService,
+		exampleEntityBaseService: exampleEntityBaseService,
+		handler:    example_EntityHandler,
 	}
-}
-
-// GetRepository returns the ExampleEntity repository
-func (c *exampleEntityComponents) GetRepository() repository.ExampleEntityRepositoryInterface {
-	return c.repository
-}
-
-// GetService returns the ExampleEntity service
-func (c *exampleEntityComponents) GetService() service.ExampleEntityServiceInterface {
-	return c.service
-}
-
-// GetHandler returns the ExampleEntity handler
-func (c *exampleEntityComponents) GetHandler() *handler.ExampleEntityHandler {
-	return c.handler
 }

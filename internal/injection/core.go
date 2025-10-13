@@ -1,30 +1,40 @@
 package injection
 
 import (
-	"crypto/ecdsa"
 	"database/sql"
-	"fmt"
-	jwtutil "go_Initializr/pkg/jwt"
+	"go_Initializr/pkg/nosql"
 	"go_Initializr/repository"
-
+	"go_Initializr/pkg/initializer"
+	events "go_Initializr/repository/queue"
+	"go_Initializr/service"
+	"go_Initializr/service/event"
+	"github.com/redis/go-redis/v9"
+	"crypto/ecdsa"
+	jwtutil "go_Initializr/pkg/jwt"
+	"fmt"
 	"github.com/rs/zerolog/log"
 )
 
 // coreComponents holds fundamental shared dependencies.
 type coreComponents struct {
-	config         *AppConfig
-	db             *sql.DB
-	baseRepository *repository.BaseRepository
+	config          *AppConfig // Assumes AppConfig is defined in config.go
+	db              *sql.DB
+	mongoClient     *nosql.MongoDB
+	redisClient     *redis.Client
+	baseRepository  *repository.BaseRepository
+	eventRepository repository.EventRepositoryInterface
+	eventPublisher  events.EventPublisher
+	eventSubscriber events.EventSubscriber
+	eventService    service.EventServiceInterface
 	publicKey      *ecdsa.PublicKey
 }
 
 // initializeCoreComponents creates the essential shared components.
-func initializeCoreComponents(db *sql.DB) (*coreComponents, error) {
-	config, err := loadConfig()
+func initializeCoreComponents(db *sql.DB, mongoClient *nosql.MongoDB) (*coreComponents, error) {
+	config, err := LoadConfig() // Assumes LoadConfig is defined in config.go
 	if err != nil {
-		return nil, err
+		return nil, err // Handle config loading error if necessary
 	}
-
 	// Load ECDSA public key for JWT validation (ES256)
 	publicKey, err := jwtutil.LoadPublicKeyFromFile(config.JWTPublicKeyPath)
 	if err != nil {
@@ -33,31 +43,38 @@ func initializeCoreComponents(db *sql.DB) (*coreComponents, error) {
 	}
 	log.Info().Str("path", config.JWTPublicKeyPath).Str("algorithm", "ES256").Msg("ECDSA public key loaded successfully")
 
+	// Assuming these are initialized elsewhere and passed in or globally available
+	// For clarity, they should ideally be passed into NewContainer
+	redisClient := initializer.RedisClient
+
 	baseRepo := &repository.BaseRepository{
-		DB: db,
+		DB:          db,
+		MongoClient: mongoClient,
+	}
+
+	eventRepo := &repository.EventRepository{DB: db}
+
+	eventPublisher := events.NewRedisEventPublisher(redisClient, config.RedisStreamName)
+	eventSubscriber := events.NewRedisEventSubscriber(redisClient, config.RedisStreamName, config.RedisConsumerGroup, config.RedisConsumerName)
+
+	eventService := &event.EventService{
+		Repository:       eventRepo,
+		EntityRepository: *baseRepo,
+		EventPublisher:   eventPublisher,
 	}
 
 	return &coreComponents{
-		config:         config,
-		db:             db,
-		baseRepository: baseRepo,
+		config:          config,
+		db:              db,
+		mongoClient:     mongoClient,
+		redisClient:     redisClient,
+		baseRepository:  baseRepo,
+		eventRepository: eventRepo,
+		eventPublisher:  eventPublisher,
+		eventSubscriber: eventSubscriber,
+		eventService:    eventService,
 		publicKey:      publicKey,
 	}, nil
-}
-
-// GetConfig returns the application configuration
-func (c *coreComponents) GetConfig() *AppConfig {
-	return c.config
-}
-
-// GetDB returns the database connection
-func (c *coreComponents) GetDB() *sql.DB {
-	return c.db
-}
-
-// GetBaseRepository returns the base repository
-func (c *coreComponents) GetBaseRepository() *repository.BaseRepository {
-	return c.baseRepository
 }
 
 // GetPublicKey returns the ECDSA public key for JWT validation (ES256)

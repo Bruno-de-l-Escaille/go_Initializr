@@ -19,6 +19,18 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func init() {
+	// Initialize environment variables
+	if err := initializer.LoadEnvVariables(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to load environment variables")
+	}
+	if err := initializer.ConnectionToMongoDB(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to MongoDB")
+	}
+	// Initialize Redis connection
+	initializer.ConnectToRedis()
+}
+
 // @title Go Initializr API
 // @version 1.0
 // @description This is a sample Go Initializr API server with JWT authentication.
@@ -48,6 +60,12 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to load environment variables")
 	}
 
+	// Load configuration
+	config, err := injection.LoadConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to load configuration")
+	}
+
 	// Initialize database
 	db, err := initializer.InitDatabase()
 	if err != nil {
@@ -55,14 +73,23 @@ func main() {
 	}
 	defer db.Close()
 
+	// Initialize MongoDB
+	mongoClient := initializer.MongoClient
+	if mongoClient == nil {
+		log.Fatal().Msg("Failed to initialize MongoDB")
+	}
+
 	// Initialize dependency container
-	container, err := injection.NewContainer(db)
+	container, err := injection.NewContainer(db, mongoClient)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize dependency container")
 	}
 
-	// Get configuration from container
-	config := container.GetConfig()
+	// Start snapshot service event listener
+	snapshotService := container.GetSnapshotService()
+	go snapshotService.StartEventListener()
+	log.Info().Msg("Started snapshot service event listener")
+
 
 	// Configure Swagger documentation dynamically
 	swaggerHost := os.Getenv("SWAGGER_HOST")

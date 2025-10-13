@@ -21,6 +21,23 @@ type AppConfig struct {
 	// JWT configuration (validation only - external service)
 	JWTPublicKeyPath string
 
+	// MongoDB configuration
+	MongoHost     string
+	MongoPort     string
+	MongoUsername string
+	MongoPassword string
+	MongoDB       string
+
+	// Redis configuration
+	RedisHost     string
+	RedisPort     string
+	RedisPassword string
+	RedisDB       int
+	RedisStreamName   string
+	RedisConsumerGroup string
+	RedisConsumerName  string
+
+
 	// Logging configuration
 	LogLevel string
 
@@ -28,8 +45,8 @@ type AppConfig struct {
 	Environment string
 }
 
-// loadConfig loads configuration from environment variables.
-func loadConfig() (*AppConfig, error) {
+// LoadConfig loads configuration from environment variables.
+func LoadConfig() (*AppConfig, error) {
 	return &AppConfig{
 		// Database configuration
 		DBHost:     getEnvOrDefault("DB_HOST", "localhost"),
@@ -45,6 +62,22 @@ func loadConfig() (*AppConfig, error) {
 
 		// JWT configuration (validation only - external service)
 		JWTPublicKeyPath: getEnvOrDefault("JWT_PUBLIC_KEY_PATH", "./keys/public.pem"),
+
+		// MongoDB configuration
+		MongoHost:     getEnvOrDefault("MONGO_HOST", "localhost"),
+		MongoPort:     getEnvOrDefault("MONGO_PORT", "27017"),
+		MongoUsername: getEnvOrDefault("MONGO_USERNAME", ""),
+		MongoPassword: getEnvOrDefault("MONGO_PASSWORD", ""),
+		MongoDB:       getEnvOrDefault("MONGO_DB", "goinitializr"),
+
+		// Redis configuration
+		RedisHost:          getEnvOrDefault("REDIS_HOST", "localhost"),
+		RedisPort:          getEnvOrDefault("REDIS_PORT", "6379"),
+		RedisPassword:      getEnvOrDefault("REDIS_PASSWORD", ""),
+		RedisDB:            0, // Default DB
+		RedisStreamName:    getEnvOrDefault("REDIS_STREAM_NAME", "go_init_events"),
+		RedisConsumerGroup: getEnvOrDefault("REDIS_CONSUMER_GROUP", "go_init_consumers"),
+		RedisConsumerName:  getEnvOrDefault("REDIS_CONSUMER_NAME", "consumer_1"),
 
 		// Logging configuration
 		LogLevel: getEnvOrDefault("LOG_LEVEL", "info"),

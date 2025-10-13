@@ -59,12 +59,14 @@ func JWTAuth(publicKey *ecdsa.PublicKey) gin.HandlerFunc {
 		var userUUID string
 		if uuid, ok := claims["user_uuid"].(string); ok {
 			userUUID = uuid
+			log.Info().Str("source", "user_uuid").Str("user_id", userUUID).Msg("Extracted user ID from JWT claims")
 		} else if userID, ok := claims["user_id"].(string); ok {
 			userUUID = userID
+			log.Info().Str("source", "user_id").Str("user_id", userUUID).Msg("Extracted user ID from JWT claims")
 		}
 
 		if userUUID == "" {
-			log.Error().Msg("No user_uuid or user_id found in token claims")
+			log.Error().Interface("claims", claims).Msg("No user_uuid or user_id found in token claims")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims: missing user identifier"})
 			c.Abort()
 			return
@@ -73,6 +75,8 @@ func JWTAuth(publicKey *ecdsa.PublicKey) gin.HandlerFunc {
 		// Set user UUID in context for use in handlers
 		c.Set("user_uuid", userUUID)
 		c.Set("jwt_claims", claims)
+
+		log.Info().Str("user_id", userUUID).Msg("Successfully set user UUID in Gin context")
 
 		// Continue to the next middleware/handler
 		c.Next()

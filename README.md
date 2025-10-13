@@ -44,7 +44,6 @@ go_Initializr/
 ├── .gitignore            # Git ignore rules
 ├── example.env           # Environment variables template
 ├── go.mod               # Go module definition
-├── Makefile            # Build and development commands
 ├── main.go             # Application entry point
 └── README.md          # This file
 ```
@@ -134,54 +133,57 @@ The server will start on `http://localhost:8080` by default.
 - `GET /health` - Health check
 - `GET /swagger/index.html` - API documentation (after generating docs)
 
+### Event Sourcing Pattern
+
+This project implements the Event Sourcing pattern for tracking changes to entities. Instead of storing only the current state of an entity, the system stores a sequence of state-changing events.
+
+**Core Components:**
+
+- **`Event` Model**: (`models/models.go`) Defines the structure of an event, including `UUID`, `Operation` (e.g., `created`, `updated`), `Payload` (the actual data), `EntityUUID`, and `ActorUUID`.
+- **`event_repository.go`**: The repository responsible for persisting events to the database. It dynamically determines the table name (e.g., `example_entity_events`) based on the entity type.
+- **`example_entity_service.go`**: The service layer uses the `BaseService` to automatically create and publish events whenever an entity is created, updated, or deleted.
+- **Event Publishing**: The system is designed to publish these events to a message queue (e.g., Redis Pub/Sub), allowing other services to subscribe and react to changes.
+
+**How It Works:**
+
+1.  When a CRUD operation is performed (e.g., creating a new `ExampleEntity`), the `ExampleEntityService` processes the request.
+2.  After successfully persisting the entity to the main table, the `BaseService` constructs an `Event` object.
+3.  This event is then saved to a corresponding events table (e.g., `example_entity_events`).
+4.  The event can be published to a message broker, enabling asynchronous processing and decoupling of services.
+
+This pattern provides a full audit log of all changes, enables rebuilding state at any point in time, and supports building complex, event-driven architectures.
+
 ### JWT Authentication
 
-The API uses **ES256 (ECDSA with P-256)** for JWT validation. This is an asymmetric cryptography approach where:
+The API uses **ES256 (ECDSA with P-256)** for JWT validation. This is an asymmetric cryptography approach where the `gopeople` service signs JWTs with a private key, and this service validates them using a corresponding public key.
 
-- **gopeople service** signs JWTs using a private key
-- **go_Initializr service** validates JWTs using a public key (this service)
-- Tokens are included in the `Authorization` header as a Bearer token
+**Implementation Details (`handler/middleware/jwt.go`):**
 
-**Algorithm**: ES256 (ECDSA with SHA-256 on P-256 curve)  
-**Validation**: Public key cryptography (no shared secrets)
+-   **`JWTAuth` Middleware**: This is the primary middleware for protecting routes. It performs the following steps:
+    1.  Extracts the `Authorization` header.
+    2.  Verifies the `Bearer <token>` format.
+    3.  Uses `jwtutil.ValidateTokenWithPublicKey` to validate the token's signature against the loaded ECDSA public key.
+    4.  Extracts `user_uuid` or `user_id` from the token claims.
+    5.  Sets the `user_uuid` in the Gin context (`c.Set("user_uuid", userUUID)`), making it available to downstream handlers.
+    6.  If any step fails, it aborts the request with a `401 Unauthorized` error.
+
+-   **`OptionalJWTAuth` Middleware**: A permissive version of the JWT middleware. It validates the token if present but allows the request to proceed even if the token is missing or invalid. This is useful for public endpoints that can provide enhanced functionality for authenticated users.
+
+**Key Characteristics:**
+
+-   **Algorithm**: ES256 (ECDSA with SHA-256 on the P-256 curve).
+-   **Stateless**: The service does not need to store session information. Validation is performed on every request using the public key.
+-   **Asymmetric**: There are no shared secrets. The public key can be safely distributed.
 
 **Protected Endpoints** (require JWT):
 - `POST /api/example-entities` - Create entity
-- `PUT /api/example-entities/{uuid}` - Update entity  
+- `PUT /api/example-entities/{uuid}` - Update entity
 - `DELETE /api/example-entities/{uuid}` - Delete entity
 
 **Public Endpoints** (no authentication required):
 - `GET /api/public/example-entities` - Get all entities
 - `GET /api/public/example-entities/{uuid}` - Get entity by UUID
 - `GET /health` - Health check
-
-**JWT Header (ES256):**
-```json
-{
-  "alg": "ES256",
-  "typ": "JWT"
-}
-```
-
-**JWT Claims:**
-```json
-{
-  "user_uuid": "user-uuid-here",
-  "user_id": "user-id",
-  "email": "user@example.com",
-  "exp": 1640995200,
-  "iat": 1640908800,
-  "iss": "gopeople"
-}
-```
-
-**How to get a JWT:**
-1. Authenticate with the gopeople service (POST `/auth/login`)
-2. Use the returned JWT token in requests to go_Initializr
-
-For more details on JWT validation architecture, see:
-- `README_JWT.md` - JWT implementation details
-- `JWT_ARCHITECTURE.md` - Service architecture and roles
 
 ### Example Usage
 

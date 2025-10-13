@@ -1,7 +1,6 @@
 package models
 
 import (
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -29,10 +28,6 @@ func (e *ExampleEntity) SetDefaults() {
 	if e.Status == "" {
 		e.Status = "pending"
 	}
-	if e.CreatedAt.IsZero() {
-		e.CreatedAt = time.Now()
-	}
-	e.UpdatedAt = time.Now()
 }
 
 // ValidateCreate validates ExampleEntity for creation

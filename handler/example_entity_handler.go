@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"go_Initializr/handler/dto"
 	"go_Initializr/models"
 	"go_Initializr/service"
 	"go_Initializr/service/utils"
@@ -44,7 +45,7 @@ type ExampleEntityHandler struct {
 // @Produce json
 // @Security BearerAuth
 // @Param Authorization header string true "Bearer token"
-// @Param entity body models.ExampleEntityCreateRequest true "ExampleEntity data"
+// @Param entity body dto.ExampleEntityCreateRequest true "ExampleEntity data"
 // @Success 201 {object} models.ExampleEntity
 // @Failure 400 {object} ResponseError "Bad Request - Invalid input data"
 // @Failure 401 {object} ResponseError "Unauthorized - Valid JWT token required"
@@ -59,7 +60,7 @@ func (h *ExampleEntityHandler) CreateEntity(c *gin.Context) {
 		return
 	}
 
-	var req models.ExampleEntityCreateRequest
+	var req dto.ExampleEntityCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Str("user_uuid", userUUID.(string)).Msg("Failed to bind JSON in CreateEntity")
 		c.JSON(http.StatusBadRequest, ResponseError{Error: "Invalid input data: " + err.Error()})
@@ -127,7 +128,7 @@ func (h *ExampleEntityHandler) GetEntity(c *gin.Context) {
 // @Security BearerAuth
 // @Param Authorization header string true "Bearer token"
 // @Param uuid path string true "ExampleEntity UUID"
-// @Param entity body models.ExampleEntityUpdateRequest true "Updated ExampleEntity data"
+// @Param entity body dto.ExampleEntityUpdateRequest true "Updated ExampleEntity data"
 // @Success 200 {object} models.ExampleEntity
 // @Failure 400 {object} ResponseError "Bad Request - Invalid input data"
 // @Failure 401 {object} ResponseError "Unauthorized - Valid JWT token required"
@@ -149,7 +150,7 @@ func (h *ExampleEntityHandler) UpdateEntity(c *gin.Context) {
 		return
 	}
 
-	var req models.ExampleEntityUpdateRequest
+	var req dto.ExampleEntityUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Error().Err(err).Str("user_uuid", userUUID.(string)).Str("entity_uuid", uuid).Msg("Failed to bind JSON in UpdateEntity")
 		c.JSON(http.StatusBadRequest, ResponseError{Error: "Invalid input data: " + err.Error()})

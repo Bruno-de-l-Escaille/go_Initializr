@@ -137,10 +137,10 @@ func NewPayloadTooLarge(maxBodySize int64, contentLength int64) *Error {
 }
 
 // NewServiceUnavailable to create an error for 503
-func NewServiceUnavailable() *Error {
+func NewServiceUnavailable(err error) *Error {
 	return &Error{
 		Type:    ServiceUnavailable,
-		Message: fmt.Sprintf("Service unavailable or timed out"),
+		Message: fmt.Sprintf("Service unavailable or timed out : %v", err.Error()),
 	}
 }
 
@@ -149,5 +149,29 @@ func NewUnsupportedMediaType(reason string) *Error {
 	return &Error{
 		Type:    UnsupportedMediaType,
 		Message: reason,
+	}
+}
+
+// NewMissingEnvError for missing required environment variables
+func NewMissingEnvError(vars ...string) *Error {
+	return &Error{
+		Type:    BadRequest,
+		Message: fmt.Sprintf("Missing required environment variables: %v", vars),
+	}
+}
+
+// NewExternalServiceError for failed external API requests (non-2xx responses)
+func NewExternalServiceError(service string, statusCode int, details string) *Error {
+	return &Error{
+		Type:    ExternalAuthError,
+		Message: fmt.Sprintf("%s service error (status %d): %s", service, statusCode, details),
+	}
+}
+
+// NewExternalParsingError for JSON decode or data handling issues
+func NewExternalParsingError(service string, details string) *Error {
+	return &Error{
+		Type:    Internal,
+		Message: fmt.Sprintf("Error parsing response from %s: %s", service, details),
 	}
 }

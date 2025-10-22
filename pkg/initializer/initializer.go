@@ -42,14 +42,11 @@ func InitDatabase() (*sql.DB, error) {
 	// Open database connection
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to open database connection")
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return nil, apperrors.NewInternal()
 	}
-
 	// Test the connection
 	if err := db.Ping(); err != nil {
-		log.Error().Err(err).Msg("Failed to ping database")
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, apperrors.NewServiceUnavailable(err)
 	}
 
 	// Set connection pool settings
@@ -92,7 +89,7 @@ func ConnectionToMongoDB() error {
 
 	client, err := nosql.NewMongoDB(mongoConfig)
 	if err != nil {
-		return apperrors.NewServiceUnavailable()
+		return apperrors.NewServiceUnavailable(err)
 	}
 
 	MongoClient = client

@@ -1,9 +1,11 @@
 package token
+
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -46,8 +48,9 @@ func fetchNewToken() (*OAuthResponse, error) {
 	data.Set("client_id", os.Getenv("GOPEOPLE_CLIENT_ID"))
 	data.Set("client_secret", os.Getenv("GOPEOPLE_CLIENT_SECRET"))
 	data.Set("scope", `[ "users:read", "users:write" ]`)
+	goPeopleApiUrl := fmt.Sprintf(os.Getenv("GOPEOPLE_API_URL")+"/oauth/token") 	
 
-	req, err := http.NewRequest("POST", "https://staging.peopleapi.tamtam.pro/oauth/token", bytes.NewBufferString(data.Encode()))
+	req, err := http.NewRequest("POST",goPeopleApiUrl , bytes.NewBufferString(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
